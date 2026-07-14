@@ -1,10 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle, Upload, FileCheck } from "lucide-react";
+import { ArrowRight, CheckCircle, Upload, FileCheck, LogOut } from "lucide-react";
 import SubmissionForm from "@/components/SubmissionForm";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const handleGetStarted = () => {
+    if (!session) {
+      navigate("/auth");
+      return;
+    }
+    setShowForm(true);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -14,13 +37,21 @@ const Index = () => {
           <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             FormFlow
           </h1>
-          <Button 
-            onClick={() => setShowForm(true)}
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-          >
-            Get Started
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {session && (
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </Button>
+            )}
+            <Button
+              onClick={handleGetStarted}
+              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+            >
+              {session ? "Get Started" : "Sign in to Start"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -45,9 +76,9 @@ const Index = () => {
           </p>
 
           <div className="pt-4">
-            <Button 
-              size="lg" 
-              onClick={() => setShowForm(true)}
+            <Button
+              size="lg"
+              onClick={handleGetStarted}
               className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all text-lg px-8 py-6 shadow-lg hover:shadow-xl"
             >
               Start Your Journey

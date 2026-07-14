@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ interface Submission {
 
 const Result = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const submissionId = searchParams.get("id");
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,12 +29,18 @@ const Result = () => {
         return;
       }
 
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        navigate("/auth");
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from("submissions")
           .select("*")
           .eq("id", submissionId)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
         setSubmission(data);
@@ -46,7 +53,7 @@ const Result = () => {
     };
 
     fetchSubmission();
-  }, [submissionId]);
+  }, [submissionId, navigate]);
 
   if (loading) {
     return (

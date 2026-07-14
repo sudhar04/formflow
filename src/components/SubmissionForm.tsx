@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,18 @@ const SubmissionForm = ({ onClose }: SubmissionFormProps) => {
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        navigate("/auth");
+        return;
+      }
+      setUserId(data.user.id);
+    });
+  }, [navigate]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,11 +40,16 @@ const SubmissionForm = ({ onClose }: SubmissionFormProps) => {
       toast.error("Please fill in all fields");
       return;
     }
+    if (!userId) {
+      toast.error("You must be signed in");
+      navigate("/auth");
+      return;
+    }
 
     try {
       const { data, error } = await supabase
         .from("submissions")
-        .insert([{ name, number }])
+        .insert([{ name, number, user_id: userId }])
         .select()
         .single();
 
@@ -50,14 +66,13 @@ const SubmissionForm = ({ onClose }: SubmissionFormProps) => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !submissionId) return;
+    if (!file || !submissionId || !userId) return;
 
     setUploading(true);
 
     try {
       const fileExt = file.name.split(".").pop();
-      const fileName = `${submissionId}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const filePath = `${userId}/${submissionId}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("submissions")
@@ -73,7 +88,7 @@ const SubmissionForm = ({ onClose }: SubmissionFormProps) => {
       if (updateError) throw updateError;
 
       toast.success("File uploaded successfully!");
-      
+
       setTimeout(() => {
         navigate(`/result?id=${submissionId}`);
       }, 500);
