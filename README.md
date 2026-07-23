@@ -10,12 +10,6 @@ A modern and responsive file upload and form management application built with *
 
 ---
 
-## 📸 Preview
-
-> Add screenshots or GIFs of your application here.
-
----
-
 ## ✨ Features
 
 - Modern and responsive UI
